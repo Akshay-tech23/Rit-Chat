@@ -1,10 +1,11 @@
 name: Build iOS
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ main ]   # 👈 change if your default branch is different
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
 
 jobs:
   build_ios:
@@ -14,13 +15,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Flutter
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.3'   # ✅ Dart 3.9.0 included
+          flutter-version: "3.35.3"   # ✅ matches Dart 3.9.0
+          channel: stable
+          cache: true
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Set iOS platform to 15
+        run: |
+          cd ios
+          if grep -q "platform :ios" Podfile; then
+            sed -i '' 's/platform :ios.*/platform :ios, "15.0"/' Podfile
+          else
+            echo 'platform :ios, "15.0"' >> Podfile
+          fi
 
       - name: Install CocoaPods dependencies
         run: |

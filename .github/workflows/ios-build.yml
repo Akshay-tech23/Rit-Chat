@@ -25,14 +25,12 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Set iOS platform to 15
+      - name: Force iOS 15 platform
         run: |
           cd ios
-          if grep -q "platform :ios" Podfile; then
-            sed -i '' 's/platform :ios.*/platform :ios, "15.0"/' Podfile
-          else
-            echo 'platform :ios, "15.0"' >> Podfile
-          fi
+          # Prepend platform line to Podfile (always ensures iOS 15)
+          echo 'platform :ios, "15.0"' | cat - Podfile > temp && mv temp Podfile
+          head -n 5 Podfile   # ✅ print first lines for debug
 
       - name: Install CocoaPods dependencies
         run: |

@@ -28,8 +28,9 @@ jobs:
       - name: Force iOS 15 platform
         run: |
           cd ios
+          # Prepend platform line to Podfile (always ensures iOS 15)
           echo 'platform :ios, "15.0"' | cat - Podfile > temp && mv temp Podfile
-          head -n 5 Podfile
+          head -n 5 Podfile   # ✅ print first lines for debug
 
       - name: Install CocoaPods dependencies
         run: |
@@ -37,45 +38,34 @@ jobs:
           pod repo update
           pod install
 
-      # ✅ Build iOS app (no codesign)
-      - name: Build iOS (no codesign)
-        run: flutter build ios --release --no-codesign
-
-      # ✅ Create unsigned IPA
-      - name: Create IPA
+      - name: Build iOS archive (no codesign)
         run: |
-          cd ios
-          xcodebuild -workspace Runner.xcworkspace \
+          xcodebuild archive \
+            -workspace ios/Runner.xcworkspace \
             -scheme Runner \
-            -sdk iphoneos \
             -configuration Release \
-            archive -archivePath $PWD/build/Runner.xcarchive \
-            DEVELOPMENT_TEAM="" \
+            -archivePath $PWD/build/Runner.xcarchive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
+      - name: Export unsigned IPA
+        run: |
           xcodebuild -exportArchive \
             -archivePath $PWD/build/Runner.xcarchive \
-            -exportOptionsPlist ExportOptions.plist \
-            -exportPath $PWD/build/ios
+            -exportPath $PWD/build/ipa \
+            -exportOptionsPlist <(cat <<EOF
+          {
+            "method": "development",
+            "signingStyle": "manual",
+            "stripSwiftSymbols": true,
+            "compileBitcode": false
+          }
+EOF
+)
 
-      # ✅ Upload .app for simulator / Xcode
-      - name: Upload .app
+      - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
         with:
-          name: ios-app
-          path: build/ios/iphoneos/*.app
-
-      # ✅ Upload unsigned IPA for sideloading
-      - name: Upload .ipa
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-ipa
-          path: ios/build/ios/*.ipa
-
-      # ✅ Job summary
-      - name: Build Summary
-        run: |
-          echo "## 🚀 iOS Build Completed" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Flutter version: 3.35.3" >> $GITHUB_STEP_SUMMARY
-          echo "- 📱 iOS Platform: 15.0" >> $GITHUB_STEP_SUMMARY
-          echo "- 📦 Artifacts: **ios-app** (.app) and **ios-ipa** (.ipa)" >> $GITHUB_STEP_SUMMARY
+          name: ios-unsigned-ipa
+          path: build/ipa/Runner.ipa

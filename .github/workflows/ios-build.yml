@@ -3,7 +3,7 @@ name: Build iOS App
 on:
   push:
     branches:
-      - main   # runs when you push to main
+      - main
 
 jobs:
   build-ios:
@@ -11,12 +11,12 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4   # also update to v4
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'   # put your flutter version here
+          flutter-version: '3.22.0'   # put your flutter version
 
       - name: Install dependencies
         run: flutter pub get
@@ -25,7 +25,7 @@ jobs:
         run: flutter build ios --release --no-codesign
 
       - name: Upload iOS build
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4   # ✅ updated version
         with:
           name: ios-build
           path: build/ios/iphoneos/

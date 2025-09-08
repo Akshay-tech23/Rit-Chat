@@ -1,4 +1,4 @@
-name: Build iOS
+name: Build & Upload iOS
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.35.3"   # ✅ matches Dart 3.9.0
+          flutter-version: "3.35.3"
           channel: stable
           cache: true
 
@@ -28,9 +28,8 @@ jobs:
       - name: Force iOS 15 platform
         run: |
           cd ios
-          # Prepend platform line to Podfile (always ensures iOS 15)
           echo 'platform :ios, "15.0"' | cat - Podfile > temp && mv temp Podfile
-          head -n 5 Podfile   # ✅ print first lines for debug
+          head -n 5 Podfile
 
       - name: Install CocoaPods dependencies
         run: |
@@ -38,5 +37,25 @@ jobs:
           pod repo update
           pod install
 
-      - name: Build iOS (no codesign)
-        run: flutter build ios --release --no-codesign
+      # 🔹 Build iOS with codesigning enabled
+      - name: Build iOS
+        run: |
+          flutter build ipa --release \
+            --export-options-plist=ios/ExportOptions.plist
+
+      # 🔹 Upload to TestFlight
+      - name: Upload IPA to TestFlight
+        uses: apple-actions/upload-testflight@v1
+        with:
+          app-path: build/ios/ipa/*.ipa
+          issuer-id: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          api-private-key: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+
+      # ✅ Summary
+      - name: Build Summary
+        run: |
+          echo "## 🚀 iOS Build & Upload Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Flutter version: 3.35.3" >> $GITHUB_STEP_SUMMARY
+          echo "- 📱 iOS Platform: 15.0" >> $GITHUB_STEP_SUMMARY
+          echo "- ☁️ Uploaded to TestFlight automatically" >> $GITHUB_STEP_SUMMARY

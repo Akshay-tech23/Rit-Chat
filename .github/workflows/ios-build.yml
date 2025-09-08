@@ -4,28 +4,48 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
-  build-ios:
+  build_ios:
     runs-on: macos-latest
 
     steps:
-      - name: Checkout source code
+      # 1️⃣ Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Flutter
+      # 2️⃣ Install Flutter
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.3'   # ✅ updated Flutter version
+          flutter-version: '3.35.3'  # matches your Flutter SDK
 
-      - name: Install dependencies
+      # 3️⃣ Generate Podfile if missing
+      - name: Generate Podfile if missing
+        run: |
+          cd ios
+          if [ ! -f Podfile ]; then
+            echo "platform :ios, '15.0'" > Podfile
+            echo "use_frameworks!" >> Podfile
+            echo "use_modular_headers!" >> Podfile
+            echo "target 'Runner' do" >> Podfile
+            echo "  flutter_application_path = '../'" >> Podfile
+            echo "  eval(File.read(File.join(flutter_application_path, '.flutter-plugins-dependencies')))" >> Podfile
+            echo "end" >> Podfile
+          fi
+
+      # 4️⃣ Get Flutter packages
+      - name: Flutter pub get
         run: flutter pub get
 
-      - name: Build iOS
+      # 5️⃣ Build iOS app
+      - name: Build iOS release
         run: flutter build ios --release --no-codesign
 
-      - name: Upload iOS build
+      # 6️⃣ Upload IPA artifact
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: ios-build
-          path: build/ios/iphoneos/
+          name: RitChat-iOS
+          path: build/ios/iphoneos/*.ipa
